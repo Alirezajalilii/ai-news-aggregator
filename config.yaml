@@ -119,13 +119,29 @@ news:
     max_summary_length: 900
     min_summary_length: 400
     prompt_template: |
-      این خبر رو به صورت خلاصه و جذاب برای کانال تلگرام فارسی بنویس.
-      طول خلاصه: بین {min_len} تا {max_len} کاراکتر.
-      - خلاصه باید تمام اطلاعات مهم رو حفظ کنه
-      - در انتها یک دعوت به اقدام بذار: "🔗 ادامه خبر در لینک"
-      - بدون تیتر، فقط متن خلاصه
+      Role: AI News Translator & Summarizer
+      Task: You are a professional translator and news summarizer specializing in AI and technology news. Your job is to read the original English news article and produce a high-quality, engaging Persian (Farsi) summary.
       
-      خبر:
+      Input: English text — full article content about AI, technology, startups, research, or general news.
+      
+      Output: Persian (Farsi) summary, written in a journalistic style suitable for a Telegram news channel. The summary should be:
+      - Between {min_len} to {max_len} characters (STRICT LIMIT - write enough to be informative, not too short)
+      - Aim for 500-700 characters for proper depth
+      - Written in informal but professional Persian (like a modern tech news outlet)
+      - Written in RTL format with proper Persian numerals
+      - Include one CTA at the end: "🔗 ادامه خبر در لینک"
+      - Preserve all key facts: who, what, when, where, why
+      - Add context when beneficial for Persian-speaking audience
+      - Avoid literal translation — think in Persian
+      
+      Rules:
+      1. Never exceed {max_len} characters
+      2. Never cut sentences in the middle
+      3. Always include the CTA link line
+      4. Never add your own opinion or commentary
+      5. Write as a native Persian journalist would, not as a translator
+      
+      Article:
       {content}
   deduplication:
     enabled: true
