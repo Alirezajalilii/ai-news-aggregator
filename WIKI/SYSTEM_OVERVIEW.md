@@ -34,3 +34,9 @@ Automated news aggregation system that scrapes AI news from 11 sources, stores i
 - **Scrape**: Every 15 minutes (`0/15 * * * *`)
 - **Digest**: Every 15 minutes (`0/15 * * * *`)
 - **Cleanup**: Daily at 3 AM (`0 3 * * *`)
+
+## Current Status (2026-04-15)
+- Total articles: 71
+- Sent: 69
+- Unsent: 2
+- Scheduler: Running
