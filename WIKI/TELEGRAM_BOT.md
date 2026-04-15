@@ -20,6 +20,8 @@ Article summary text (max 500 chars)...
 ```
 - Caption limited to 1024 characters (Telegram limit)
 - **Summary Length**: 400-900 characters (truncated at sentence boundary)
+- **Scraper**: Fetches full article content - no limit on input
+- **Truncation**: Happens at Telegram formatting stage only
 
 ### Text Message (no valid image)
 Same format but sent via `sendMessage` instead of `sendPhoto`
