@@ -45,72 +45,84 @@ scraper:
   retry_delay: 5
   batch_size: 5
   concurrency: 3
+  default_fetch_strategy: "httpx"  # httpx, curl, ollama, brave
   sources:
     - name: "openai"
       url: "https://openai.com/blog"
       enabled: true
       priority: 1
       category: "company"
+      fetch_strategy: "ollama"  # Try LLM extraction for Cloudflare-protected sites
       
     - name: "anthropic"
       url: "https://www.anthropic.com/news"
       enabled: true
       priority: 1
       category: "company"
+      fetch_strategy: "httpx"
       
     - name: "google_ai"
       url: "https://blog.google/technology/ai/"
       enabled: true
       priority: 1
       category: "company"
+      fetch_strategy: "httpx"
       
     - name: "huggingface"
       url: "https://huggingface.co/blog"
       enabled: true
       priority: 2
       category: "community"
+      fetch_strategy: "httpx"
       
     - name: "marktechpost"
       url: "https://www.marktechpost.com/"
       enabled: true
       priority: 2
       category: "news"
+      fetch_strategy: "httpx"
       
     - name: "techcrunch_ai"
       url: "https://techcrunch.com/category/artificial-intelligence/"
       enabled: true
       priority: 2
       category: "business"
+      fetch_strategy: "httpx"
       
     - name: "venturebeat_ai"
       url: "https://venturebeat.com/category/ai/"
       enabled: true
       priority: 2
       category: "business"
+      fetch_strategy: "curl"  # curl may bypass rate limiting
       
     - name: "mit_news_ai"
       url: "https://news.mit.edu/topic/artificial-intelligence"
       enabled: true
       priority: 3
       category: "research"
+      fetch_strategy: "httpx"
       
     - name: "unite_ai"
       url: "https://www.unite.ai/"
       enabled: true
       priority: 3
       category: "news"
+      fetch_strategy: "httpx"
       
     - name: "ai_news"
       url: "https://www.ainews.com/"
       enabled: true
       priority: 3
       category: "news"
+      fetch_strategy: "httpx"
       
     - name: "the_verge_ai"
       url: "https://www.theverge.com/ai-artificial-intelligence"
       enabled: true
       priority: 3
       category: "news"
+      fetch_strategy: "httpx"
 
 news:
   summarization:

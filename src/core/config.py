@@ -68,6 +68,7 @@ class ScraperSource(BaseModel):
     priority: int = 1
     category: str = "general"
     custom_headers: Optional[dict] = None
+    fetch_strategy: str = "httpx"  # httpx, curl, ollama, brave
 
 
 class ScraperConfig(BaseModel):
@@ -77,6 +78,7 @@ class ScraperConfig(BaseModel):
     retry_delay: int = 5
     batch_size: int = 5
     concurrency: int = 3
+    default_fetch_strategy: str = "httpx"
     sources: List[ScraperSource] = []
 
 

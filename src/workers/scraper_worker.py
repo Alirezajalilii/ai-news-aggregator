@@ -132,6 +132,8 @@ class ScraperWorker:
             scraper = ScraperRegistry.get_scraper(source_config.name)
             
             if scraper:
+                # Set fetch strategy from source config
+                scraper.fetch_strategy = getattr(source_config, 'fetch_strategy', 'httpx')
                 tasks.append(self._scrape_source(scraper, source, session))
             else:
                 logger.warning(f"No scraper found for source: {source_config.name}")
