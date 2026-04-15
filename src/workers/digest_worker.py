@@ -192,20 +192,22 @@ class DigestWorker:
         messages_sent = sum(1 for r in responses if r.get("ok"))
         
         # Record sent messages
-        for article in filtered_articles:
+        # Send each article and track success
+        for idx, article in enumerate(filtered_articles):
             sent_msg = SentMessage(
                 article_id=article.id,
                 channel_type=subscription.subscriber_type,
                 channel_id=subscription.subscriber_id,
-                message_id=str(responses[0].get("result", {}).get("message_id")) if responses else None,
+                message_id=str(responses[idx].get("result", {}).get("message_id")) if responses and idx < len(responses) and responses[idx].get("ok") else None,
                 content=f"Digest: {article.title}",
-                delivered=True
+                delivered=responses[idx].get("ok") if responses and idx < len(responses) else False
             )
             session.add(sent_msg)
             
-            # Mark article as sent
-            article.is_sent = True
-            article.sent_count += 1
+            # Mark article as sent ONLY if delivery was successful
+            if responses and idx < len(responses) and responses[idx].get("ok"):
+                article.is_sent = True
+                article.sent_count += 1
         
         # Update subscription
         subscription.last_sent_at = datetime.utcnow()

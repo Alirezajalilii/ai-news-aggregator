@@ -13,8 +13,8 @@ database:
   host: "localhost"
   port: 5432
   name: "ai_news"
-  username: "postgres"
-  password: "postgres"
+  username: "planchin"
+  password: "dev_password"
   pool_size: 10
   max_overflow: 20
   echo: false
@@ -33,7 +33,8 @@ telegram:
     - 6492129439  # Alireza
   admin_users:
     - 6492129439
-  channels: []
+  channels:
+    - "@ainews_ramzbank"  # AI News Channel
   parse_mode: "HTML"
   message_template: "html"
 

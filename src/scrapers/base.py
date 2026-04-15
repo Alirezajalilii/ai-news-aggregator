@@ -137,6 +137,46 @@ class BaseScraper(ABC):
         
         return None
     
+    async def fetch_article_content(self, url: str) -> Optional[str]:
+        """
+        Fetch full article content from article page
+        
+        Args:
+            url: Article URL
+            
+        Returns:
+            Full article text or None on failure
+        """
+        soup = await self.fetch_page(url)
+        if soup is None:
+            return None
+        
+        # Try common article content selectors
+        content_selectors = [
+            "article",
+            "[class*='article-content']",
+            "[class*='post-content']",
+            "[class*='entry-content']",
+            "[class*='story-body']",
+            "main",
+            "#content",
+        ]
+        
+        for selector in content_selectors:
+            content_elem = soup.select_one(selector)
+            if content_elem:
+                # Remove script and style elements
+                for elem in content_elem.find_all(["script", "style", "nav", "footer", "header"]):
+                    elem.decompose()
+                
+                text = content_elem.get_text(separator="\n", strip=True)
+                text = self.clean_text(text)
+                
+                if text and len(text) > 100:
+                    return text
+        
+        return None
+    
     async def scrape(self) -> ScraperResult:
         """
         Main scraping method

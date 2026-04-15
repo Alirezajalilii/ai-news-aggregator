@@ -61,29 +61,34 @@ def cli(ctx, config, log_level):
 
 @cli.command()
 @click.pass_context
-async def init(ctx):
+def init(ctx):
     """Initialize database tables"""
     console.print("[cyan]Initializing database...[/cyan]")
     
     try:
-        await init_db()
+        asyncio.run(_init_db())
         console.print("[green]Database initialized successfully![/green]")
     except Exception as e:
         console.print(f"[red]Error initializing database: {e}[/red]")
         sys.exit(1)
 
 
+async def _init_db():
+    from src.database.models import init_db
+    await init_db()
+
+
 @cli.command()
 @click.option("--source", "-s", help="Scrape specific source only")
 @click.pass_context
-async def scrape(ctx, source):
+def scrape(ctx, source):
     """Scrape news from all configured sources"""
     console.print("[cyan]Starting scrape...[/cyan]")
     
     worker = ScraperWorker()
     
     try:
-        stats = await worker.run()
+        stats = asyncio.run(worker.run())
         
         # Display results
         table = Table(title="Scrape Results")
@@ -109,20 +114,20 @@ async def scrape(ctx, source):
         sys.exit(1)
     
     finally:
-        await worker.close_session()
+        asyncio.run(worker.close_session())
 
 
 @cli.command()
 @click.option("--category", "-c", multiple=True, help="Filter by category")
 @click.pass_context
-async def digest(ctx, category):
+def digest(ctx, category):
     """Send news digest to subscribers"""
     console.print("[cyan]Sending digest...[/cyan]")
     
     worker = DigestWorker()
     
     try:
-        stats = await worker.run(category_filter=list(category) if category else None)
+        stats = asyncio.run(worker.run(category_filter=list(category) if category else None))
         
         # Display results
         table = Table(title="Digest Results")
@@ -146,12 +151,12 @@ async def digest(ctx, category):
         sys.exit(1)
     
     finally:
-        await worker.close_session()
+        asyncio.run(worker.close_session())
 
 
 @cli.command()
 @click.pass_context
-async def scheduler(ctx):
+def scheduler(ctx):
     """Start the scheduler for periodic tasks"""
     console.print("[cyan]Starting scheduler...[/cyan]")
     console.print("[yellow]Press Ctrl+C to stop[/yellow]")
@@ -161,8 +166,7 @@ async def scheduler(ctx):
     
     try:
         # Keep running
-        while True:
-            await asyncio.sleep(1)
+        asyncio.run(asyncio.Event().wait())
     except KeyboardInterrupt:
         console.print("\n[yellow]Stopping scheduler...[/yellow]")
         scheduler.stop()
@@ -171,12 +175,12 @@ async def scheduler(ctx):
 @cli.command()
 @click.argument("job_name")
 @click.pass_context
-async def run_job(ctx, job_name):
+def run_job(ctx, job_name):
     """Run a specific job immediately"""
     scheduler = get_scheduler()
     
     try:
-        await scheduler.run_now(job_name)
+        asyncio.run(scheduler.run_now(job_name))
         console.print(f"[green]Job '{job_name}' completed![/green]")
     except Exception as e:
         console.print(f"[red]Error running job: {e}[/red]")

@@ -193,6 +193,9 @@ class ScraperWorker:
         
         dedup_service = DeduplicationService(session)
         
+        # Get scraper for fetching full content
+        scraper = ScraperRegistry.get_scraper(scraper_result.source_name)
+        
         for article_data in scraper_result.articles:
             try:
                 # Extract entities
@@ -225,12 +228,27 @@ class ScraperWorker:
                 if not source:
                     continue
                 
+                # Fetch full article content if scraper supports it
+                full_content = article_data.content
+                if scraper and not full_content:
+                    try:
+                        full_content = await scraper.fetch_article_content(article_data.url)
+                    except Exception as e:
+                        self.logger.debug(f"Could not fetch full content for {article_data.url}: {e}")
+                
+                # Use full content as summary if no summary
+                display_summary = article_data.summary or full_content
+                if display_summary and len(display_summary) > 2000:
+                    display_summary = display_summary[:2000] + "..."
+                
                 # Create article
                 article = Article(
                     source_id=source.id,
+                    source_name=source.name,
+                    category=source.category,
                     title=article_data.title,
-                    summary=article_data.summary,
-                    content=article_data.content,
+                    summary=display_summary,
+                    content=full_content,
                     url=article_data.url,
                     image_url=article_data.image_url,
                     published_at=article_data.published_at,

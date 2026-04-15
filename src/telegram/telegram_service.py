@@ -5,6 +5,7 @@ Handles sending messages to Telegram channels and users
 
 import asyncio
 import logging
+import re
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import httpx
@@ -30,21 +31,59 @@ class TelegramFormatter:
         lines.append(f"{category_emoji} <b>{article.title}</b>")
         lines.append("")
         
-        # Summary
+        # Summary (full, but trimmed to reasonable length)
         if article.summary:
-            summary = article.summary[:300] + "..." if len(article.summary) > 300 else article.summary
-            lines.append(summary)
+            # Clean HTML tags if any
+            clean_summary = article.summary.replace("\u200b", "").replace("<br>", "\n").replace("<br/>", "\n")
+            clean_summary = re.sub(r'<[^>]+>', '', clean_summary)  # Remove any HTML tags
+            if len(clean_summary) > 500:
+                clean_summary = clean_summary[:500] + "..."
+            lines.append(clean_summary)
             lines.append("")
         
         # Source and link
-        source_name = article.source.name.replace("_", " ").title() if article.source else "AI News"
-        lines.append(f"📌 Source: {source_name}")
+        source_name = article.source_name.replace("_", " ").title() if article.source_name else "AI News"
+        lines.append(f"📌 منبع: {source_name}")
         
         if config.get("include_timestamp", True) and article.published_at:
-            time_str = article.published_at.strftime("%Y-%m-%d %H:%M")
+            time_str = article.published_at.strftime("%Y-%m-%d")
             lines.append(f"⏰ {time_str}")
         
-        lines.append(f"🔗 {article.url}")
+        lines.append(f"🔗 <a href=\"{article.url}\">لینک خبر</a>")
+        
+        return "\n".join(lines)
+    
+    @staticmethod
+    def format_article_forPhoto(article: Article, config: Dict[str, Any]) -> str:
+        """Format article caption for photo message"""
+        lines = []
+        
+        # Category emoji
+        category_emoji = config.get("categories", {}).get(article.category, {}).get("emoji", "📰")
+        
+        # Title
+        lines.append(f"{category_emoji} <b>{article.title}</b>")
+        lines.append("")
+        
+        # Summary (full but limited to Telegram caption limit of 1024)
+        if article.summary:
+            clean_summary = article.summary.replace("\u200b", "").replace("<br>", "\n").replace("<br/>", "\n")
+            clean_summary = re.sub(r'<[^>]+>', '', clean_summary)
+            # Telegram caption limit is 1024
+            if len(clean_summary) > 500:
+                clean_summary = clean_summary[:500] + "...\n[ادامه خبر در لینک]"
+            lines.append(clean_summary)
+        
+        # Source and link
+        source_name = article.source_name.replace("_", " ").title() if article.source_name else "AI News"
+        lines.append("")
+        lines.append(f"📌 منبع: {source_name}")
+        
+        if config.get("include_timestamp", True) and article.published_at:
+            time_str = article.published_at.strftime("%Y-%m-%d")
+            lines.append(f"⏰ {time_str}")
+        
+        lines.append(f"🔗 <a href=\"{article.url}\">لینک خبر</a>")
         
         return "\n".join(lines)
     
@@ -179,6 +218,50 @@ class TelegramService:
             logger.error(f"Error sending message: {e}")
             raise
     
+    async def send_photo(
+        self,
+        photo_url: str,
+        caption: str,
+        chat_id: Optional[str] = None,
+        parse_mode: str = "HTML"
+    ) -> Dict[str, Any]:
+        """
+        Send photo with caption to Telegram chat
+        
+        Args:
+            photo_url: URL of the photo
+            caption: Photo caption (HTML supported)
+            chat_id: Chat ID
+            parse_mode: HTML or Markdown
+            
+        Returns:
+            API response dict
+        """
+        if chat_id is None:
+            chat_id = self.bot_config.channels[0] if self.bot_config.channels else None
+        
+        if not chat_id:
+            raise ValueError("No chat_id provided and no default channels configured")
+        
+        payload = {
+            "chat_id": chat_id,
+            "photo": photo_url,
+            "caption": caption,
+            "parse_mode": parse_mode,
+        }
+        
+        try:
+            response = await self.client.post(
+                f"{self.base_url}/sendPhoto",
+                json=payload
+            )
+            response.raise_for_status()
+            result = response.json()
+            return result
+        except Exception as e:
+            logger.error(f"Error sending photo: {e}")
+            raise
+    
     async def send_article(self, article: Article, chat_id: Optional[str] = None) -> Dict[str, Any]:
         """Send single article to chat"""
         format_config = {
@@ -195,7 +278,7 @@ class TelegramService:
     
     async def send_digest(self, articles: List[Article], chat_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Send news digest to chat
+        Send news digest to chat - each article as separate message
         
         Args:
             articles: List of articles to send
@@ -211,22 +294,34 @@ class TelegramService:
             },
             "include_source": True,
             "include_timestamp": True,
-            "max_articles_per_message": self.config.telegram_bot.formatting.max_articles_per_message,
         }
         
-        messages = self.formatter.format_digest(articles, format_config)
-        
         responses = []
-        for msg_text in messages:
+        
+        for article in articles:
             try:
-                response = await self.send_message(msg_text, chat_id)
+                # Check if article has valid absolute image URL (not relative path)
+                if article.image_url and article.image_url.startswith('http'):
+                    caption = self.formatter.format_article_forPhoto(article, format_config)
+                    try:
+                        response = await self.send_photo(article.image_url, caption, chat_id)
+                        if response.get('ok'):
+                            responses.append(response)
+                            await asyncio.sleep(3.0)
+                            continue
+                    except Exception as photo_error:
+                        logger.debug(f"Photo failed, falling back to text: {photo_error}")
+                
+                # Send as text message (either no image or photo failed)
+                text = self.formatter.format_article(article, format_config)
+                response = await self.send_message(text, chat_id)
                 responses.append(response)
                 
-                # Rate limit protection
-                await asyncio.sleep(0.5)
+                # Rate limit protection (Telegram: 20 msg/min to channel)
+                await asyncio.sleep(3.0)
                 
             except Exception as e:
-                logger.error(f"Error sending digest message: {e}")
+                logger.error(f"Error sending article '{article.title[:30]}...': {e}")
                 responses.append({"ok": False, "error": str(e)})
         
         return responses

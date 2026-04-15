@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import (
-    Column, String, Text, Boolean, Integer, DateTime, 
+    Column, String, Text, Boolean, Integer, BigInteger, DateTime, 
     ForeignKey, Index, create_engine, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, JSON, ARRAY
@@ -37,7 +37,7 @@ class Source(Base):
     
     # Metadata
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
     last_fetched_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     fetch_count: Mapped[int] = mapped_column(Integer, default=0)
     error_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -56,6 +56,7 @@ class Article(Base):
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sources.id"), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(100), nullable=False)  # Denormalized for easy access
     
     # Content
     title: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -156,7 +157,7 @@ class Subscription(Base):
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None, nullable=True)
     last_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     # Stats
@@ -175,7 +176,7 @@ class User(Base):
     __tablename__ = "users"
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    telegram_id: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     username: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     first_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

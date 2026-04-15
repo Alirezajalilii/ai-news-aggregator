@@ -2,7 +2,6 @@
 # Production dependencies for AI news aggregation system
 
 # Core
-Python>=3.10
 pydantic>=2.0
 pydantic-settings>=2.0
 PyYAML>=6.0

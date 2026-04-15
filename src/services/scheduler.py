@@ -13,8 +13,6 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from src.core.config import get_config
-from src.workers.scraper_worker import ScraperWorker
-from src.workers.digest_worker import DigestWorker
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +25,22 @@ class NewsScheduler:
     def __init__(self):
         self.config = get_config()
         self.scheduler: Optional[AsyncIOScheduler] = None
-        self.scraper_worker = ScraperWorker()
-        self.digest_worker = DigestWorker()
+        self._scraper_worker = None
+        self._digest_worker = None
+    
+    @property
+    def scraper_worker(self):
+        if self._scraper_worker is None:
+            from src.workers.scraper_worker import ScraperWorker
+            self._scraper_worker = ScraperWorker()
+        return self._scraper_worker
+    
+    @property
+    def digest_worker(self):
+        if self._digest_worker is None:
+            from src.workers.digest_worker import DigestWorker
+            self._digest_worker = DigestWorker()
+        return self._digest_worker
     
     def start(self):
         """Start the scheduler"""
