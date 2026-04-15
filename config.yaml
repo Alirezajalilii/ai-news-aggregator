@@ -1,0 +1,217 @@
+# AI News Aggregator Configuration
+# Production-ready configuration for AI news aggregation system
+
+app:
+  name: "AI News Aggregator"
+  version: "1.0.0"
+  environment: "development"  # development, staging, production
+  debug: true
+  host: "0.0.0.0"
+  port: 8000
+
+database:
+  host: "localhost"
+  port: 5432
+  name: "ai_news"
+  username: "postgres"
+  password: "postgres"
+  pool_size: 10
+  max_overflow: 20
+  echo: false
+
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+  password: null
+  socket_timeout: 5
+  max_connections: 50
+
+telegram:
+  bot_token: "7856786987:AAF6ikQ_C_VXDYO78CKW6V_X-US-PKS7w3U"
+  allowed_users:
+    - 6492129439  # Alireza
+  admin_users:
+    - 6492129439
+  channels: []
+  parse_mode: "HTML"
+  message_template: "html"
+
+scraper:
+  user_agent: "AI-News-Aggregator/1.0 (+https://github.com/example/ai-news-aggregator)"
+  request_timeout: 30
+  max_retries: 3
+  retry_delay: 5
+  batch_size: 5
+  concurrency: 3
+  sources:
+    - name: "openai"
+      url: "https://openai.com/blog"
+      enabled: true
+      priority: 1
+      category: "company"
+      
+    - name: "anthropic"
+      url: "https://www.anthropic.com/news"
+      enabled: true
+      priority: 1
+      category: "company"
+      
+    - name: "google_ai"
+      url: "https://blog.google/technology/ai/"
+      enabled: true
+      priority: 1
+      category: "company"
+      
+    - name: "huggingface"
+      url: "https://huggingface.co/blog"
+      enabled: true
+      priority: 2
+      category: "community"
+      
+    - name: "marktechpost"
+      url: "https://www.marktechpost.com/"
+      enabled: true
+      priority: 2
+      category: "news"
+      
+    - name: "techcrunch_ai"
+      url: "https://techcrunch.com/category/artificial-intelligence/"
+      enabled: true
+      priority: 2
+      category: "business"
+      
+    - name: "venturebeat_ai"
+      url: "https://venturebeat.com/category/ai/"
+      enabled: true
+      priority: 2
+      category: "business"
+      
+    - name: "mit_news_ai"
+      url: "https://news.mit.edu/topic/artificial-intelligence"
+      enabled: true
+      priority: 3
+      category: "research"
+      
+    - name: "unite_ai"
+      url: "https://www.unite.ai/"
+      enabled: true
+      priority: 3
+      category: "news"
+      
+    - name: "ai_news"
+      url: "https://www.ainews.com/"
+      enabled: true
+      priority: 3
+      category: "news"
+      
+    - name: "the_verge_ai"
+      url: "https://www.theverge.com/ai-artificial-intelligence"
+      enabled: true
+      priority: 3
+      category: "news"
+
+news:
+  deduplication:
+    enabled: true
+    similarity_threshold: 0.75
+    title_similarity_weight: 0.4
+    entity_similarity_weight: 0.4
+    content_similarity_weight: 0.2
+    max_age_hours: 48
+    store_hash: true
+    
+  categories:
+    - id: "model"
+      name: "🤖 مدل‌های جدید"
+      emoji: "🤖"
+      
+    - id: "company"
+      name: "🏢 شرکت‌ها"
+      emoji: "🏢"
+      
+    - id: "startup"
+      name: "💰 استارتاپ/سرمایه‌گذاری"
+      emoji: "💰"
+      
+    - id: "research"
+      name: "🔬 تحقیقات"
+      emoji: "🔬"
+      
+    - id: "tool"
+      name: "⚡ ابزارها"
+      emoji: "⚡"
+      
+    - id: "general"
+      name: "📰 عمومی"
+      emoji: "📰"
+
+scheduler:
+  enabled: true
+  timezone: "Asia/Tehran"
+  
+  jobs:
+    - name: "fetch_all_sources"
+      schedule: "0 */4 * * *"  # Every 4 hours
+      description: "Fetch news from all sources"
+      enabled: true
+      
+    - name: "cleanup_old_news"
+      schedule: "0 3 * * *"  # Daily at 3 AM
+      description: "Clean up news older than 7 days"
+      enabled: true
+      
+    - name: "send_digest"
+      schedule: "0 8,12,18,22 * * *"  # 8AM, 12PM, 6PM, 10PM
+      description: "Send news digest to subscribed channels"
+      enabled: true
+
+telegram_bot:
+  commands:
+    - command: "start"
+      description: "Start the bot"
+      
+    - command: "help"
+      description: "Get help"
+      
+    - command: "latest"
+      description: "Get latest news"
+      
+    - command: "subscribe"
+      description: "Subscribe to digest"
+      
+    - command: "unsubscribe"
+      description: "Unsubscribe from digest"
+      
+    - command: "stats"
+      description: "Get statistics"
+      
+    - command: "search"
+      description: "Search news"
+      
+  filters:
+    min_title_length: 10
+    max_title_length: 200
+    min_summary_length: 50
+    max_summary_length: 500
+    
+  formatting:
+    max_articles_per_message: 10
+    include_source: true
+    include_timestamp: true
+    include_categories: true
+    link_preview: false
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/app.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+  sentry_dsn: null  # Optional Sentry integration
+
+monitoring:
+  enabled: true
+  health_check_interval: 60
+  metrics_port: 9090
+  prometheus_enabled: false
