@@ -60,7 +60,7 @@ class NewsScheduler:
             elif job_config.name == "cleanup_old_news":
                 self._add_cleanup_job(job_config)
             elif job_config.name == "send_digest":
-                self._add_digest_job(job_config)
+                pass  # Don't add digest separately - it runs AFTER fetch in same cycle
         
         self.scheduler.start()
         logger.info("Scheduler started")
@@ -118,11 +118,20 @@ class NewsScheduler:
         logger.info(f"Added digest job: {job_config.schedule}")
     
     async def _run_fetcher(self):
-        """Run the scraper worker"""
+        """Run the scraper worker, then send digest"""
         logger.info("Running scheduled fetch job")
         try:
+            # 1. Run scraper
             stats = await self.scraper_worker.run()
             logger.info(f"Fetch job completed: {stats}")
+            
+            # 2. Then run digest to send new articles
+            await asyncio.sleep(5)  # Brief pause for DB commit
+            
+            logger.info("Running digest after scraper")
+            digest_stats = await self.digest_worker.run()
+            logger.info(f"Digest job completed: {digest_stats}")
+            
         except Exception as e:
             logger.error(f"Error in fetch job: {e}")
     
@@ -133,8 +142,13 @@ class NewsScheduler:
         pass
     
     async def _run_digest(self):
-        """Run the digest worker"""
+        """Run the digest worker after a short delay to let scraper complete"""
         logger.info("Running scheduled digest job")
+        
+        # Wait 30 seconds for scraper to complete and articles to be saved
+        # This ensures digest runs AFTER scraper finishes
+        await asyncio.sleep(30)
+        
         try:
             stats = await self.digest_worker.run()
             logger.info(f"Digest job completed: {stats}")

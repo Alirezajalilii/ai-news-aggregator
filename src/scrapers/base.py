@@ -72,6 +72,12 @@ class BaseScraper(ABC):
         """
         pass
     
+    def _html_to_soup(self, content: str | BeautifulSoup) -> BeautifulSoup:
+        """Convert HTML string to BeautifulSoup if needed"""
+        if isinstance(content, str):
+            return BeautifulSoup(content, "html.parser")
+        return content
+    
     async def scrape(self) -> ScraperResult:
         """
         Main entry point: fetch and parse articles
@@ -80,16 +86,18 @@ class BaseScraper(ABC):
             ScraperResult with articles or error
         """
         try:
-            content = await self._fetch()
+            html_content = await self._fetch()
             
-            if not content:
+            if not html_content:
                 return ScraperResult(
                     source_name=self.name,
                     success=False,
                     error="Failed to fetch content"
                 )
             
-            articles = await self.parse_articles(content, self.base_url)
+            # Convert to BeautifulSoup for parsing
+            soup = self._html_to_soup(html_content)
+            articles = await self.parse_articles(soup, self.base_url)
             
             return ScraperResult(
                 source_name=self.name,

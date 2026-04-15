@@ -195,7 +195,7 @@ scheduler:
   
   jobs:
     - name: "fetch_all_sources"
-      schedule: "0/15 * * * *"  # Every 4 hours
+      schedule: "5/15 * * * *"  # Every 15 min, at :05
       description: "Fetch news from all sources"
       enabled: true
       
@@ -205,7 +205,7 @@ scheduler:
       enabled: true
       
     - name: "send_digest"
-      schedule: "0/15 * * * *"  # 8AM, 12PM, 6PM, 10PM
+      schedule: "10/15 * * * *"  # Every 15 min, at :10 (5 min after scraper)
       description: "Send news digest to subscribed channels"
       enabled: true
 
