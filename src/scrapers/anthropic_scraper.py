@@ -4,6 +4,7 @@ Scraper for Anthropic News
 """
 
 import logging
+import re
 from datetime import datetime
 from typing import List
 from bs4 import BeautifulSoup
@@ -23,12 +24,18 @@ class AnthropicScraper(BaseScraper):
         """Parse articles from Anthropic news page"""
         articles = []
         
-        # Find article sections
-        article_sections = soup.find_all("article") or soup.find_all("section") or soup.find_all("div", class_=lambda x: x and "article" in str(x).lower())
+        # Find all links that point to news articles
+        news_links = soup.find_all("a", href=lambda x: x and "/news/" in str(x) and not x.endswith("/news"))
         
-        for section in article_sections[:15]:
+        seen_urls = set()
+        for link in news_links:
             try:
-                article = self._extract_article(section, url)
+                href = link.get("href", "")
+                if href in seen_urls:
+                    continue
+                seen_urls.add(href)
+                
+                article = self._extract_article_from_link(link, href)
                 if article and len(article.title) > 10:
                     articles.append(article)
             except Exception as e:
@@ -37,46 +44,56 @@ class AnthropicScraper(BaseScraper):
         
         return articles
     
-    def _extract_article(self, section, base_url: str) -> ArticleData:
-        """Extract article data from section element"""
+    def _extract_article_from_link(self, link, href) -> ArticleData:
+        """Extract article data from link element"""
         
-        # Title
-        title_elem = (
-            section.find("h1") or 
-            section.find("h2") or 
-            section.find("h3")
-        )
-        title = self.clean_text(title_elem.get_text()) if title_elem else None
+        # Title: link text contains "DateCategoryTitle" format - extract just the title
+        full_text = self.clean_text(link.get_text())
+        
+        # Pattern: "Apr 14, 2026AnnouncementsActual Title Here"
+        # Date pattern with optional comma after date
+        date_pattern = r'^[A-Za-z]+\s+\d{1,2},\s*\d{4}'
+        title = re.sub(date_pattern, '', full_text).strip()
+        
+        # Also remove category if present (Announcements, Research, etc)
+        # Categories are: Announcements, Research, Policy, Product
+        title = re.sub(r'^(Announcements|Research|Policy|Product)\s*', '', title, flags=re.IGNORECASE).strip()
         
         # URL
-        link = section.find("a", href=True)
-        article_url = link["href"] if link else None
+        article_url = href
+        if not article_url.startswith("http"):
+            article_url = f"https://www.anthropic.com{href}"
         
-        if article_url and not article_url.startswith("http"):
-            article_url = f"https://www.anthropic.com{article_url}"
-        
-        # Summary
-        summary_elem = section.find("p")
-        summary = self.clean_text(summary_elem.get_text()) if summary_elem else None
-        
-        # Date
-        date_elem = section.find(["time", "span"], class_=lambda x: x and "date" in str(x).lower())
+        # Date - try to extract from full text
         published_at = None
-        if date_elem:
-            if date_elem.name == "time":
-                published_at = self.extract_date(date_elem.get("datetime"))
-            else:
-                published_at = self.extract_date(date_elem.get_text())
+        date_match = re.search(r'([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})', full_text)
+        if date_match:
+            date_str = f"{date_match.group(1)} {date_match.group(2)}, {date_match.group(3)}"
+            published_at = self.extract_date(date_str)
+        
+        # Summary - try parent element
+        summary = None
+        parent = link.parent
+        if parent:
+            p = parent.find("p")
+            if p:
+                summary = self.clean_text(p.get_text())
         
         # Image
-        img_elem = section.find("img")
-        image_url = img_elem["src"] if img_elem and img_elem.get("src") else None
+        img = None
+        parent = link.parent
+        while parent and parent.name != "article" and parent.name != "main":
+            parent = parent.parent
+        if parent:
+            img_elem = parent.find("img")
+            if img_elem:
+                img = img_elem.get("src") or img_elem.get("data-src")
         
         return ArticleData(
             title=title or "No title",
             url=article_url or "",
             summary=summary,
-            image_url=image_url,
+            image_url=img,
             published_at=published_at or datetime.utcnow(),
             tags=["AI", "Anthropic", "Claude"]
         )

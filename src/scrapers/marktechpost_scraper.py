@@ -23,7 +23,8 @@ class MarkTechPostScraper(BaseScraper):
         """Parse articles from MarkTechPost"""
         articles = []
         
-        article_cards = soup.find_all("div", class_=lambda x: x and "post" in str(x).lower()) or soup.find_all("article")
+        # MarkTechPost uses td_module_flex classes
+        article_cards = soup.find_all("div", class_=lambda x: x and "td_module_flex" in str(x))
         
         for card in article_cards[:20]:
             try:
