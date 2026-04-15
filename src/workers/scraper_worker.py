@@ -238,8 +238,8 @@ class ScraperWorker:
                 
                 # Use full content as summary if no summary
                 display_summary = article_data.summary or full_content
-                if display_summary and len(display_summary) > 2000:
-                    display_summary = display_summary[:2000] + "..."
+                if display_summary and len(display_summary) > 1000:
+                    display_summary = display_summary[:1000]
                 
                 # Create article
                 article = Article(

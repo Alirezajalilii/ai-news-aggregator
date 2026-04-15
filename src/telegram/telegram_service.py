@@ -31,13 +31,20 @@ class TelegramFormatter:
         lines.append(f"{category_emoji} <b>{article.title}</b>")
         lines.append("")
         
-        # Summary (full, but trimmed to reasonable length)
+        # Summary (natural summary, truncated at sentence boundary between 400-900 chars)
         if article.summary:
             # Clean HTML tags if any
             clean_summary = article.summary.replace("\u200b", "").replace("<br>", "\n").replace("<br/>", "\n")
             clean_summary = re.sub(r'<[^>]+>', '', clean_summary)  # Remove any HTML tags
-            if len(clean_summary) > 500:
-                clean_summary = clean_summary[:500] + "..."
+            # Allow natural summary between 400-900 chars, truncate at sentence boundary
+            if len(clean_summary) > 900:
+                # Find last sentence boundary before 900 chars
+                truncated = clean_summary[:900]
+                last_period = max(truncated.rfind('.'), truncated.rfind('؟'), truncated.rfind('!'), truncated.rfind('.'))
+                if last_period > 400:
+                    clean_summary = truncated[:last_period + 1]
+                else:
+                    clean_summary = truncated + "..."
             lines.append(clean_summary)
             lines.append("")
         
@@ -65,15 +72,21 @@ class TelegramFormatter:
         lines.append(f"{category_emoji} <b>{article.title}</b>")
         lines.append("")
         
-        # Summary (full but limited to Telegram caption limit of 1024)
+        # Summary (natural summary between 400-900 chars, truncated at sentence boundary)
         if article.summary:
             clean_summary = article.summary.replace("\u200b", "").replace("<br>", "\n").replace("<br/>", "\n")
             clean_summary = re.sub(r'<[^>]+>', '', clean_summary)
-            # Telegram caption limit is 1024
-            if len(clean_summary) > 500:
-                clean_summary = clean_summary[:500] + "...\n[ادامه خبر در لینک]"
+            # Allow natural summary between 400-900 chars, truncate at sentence boundary
+            if len(clean_summary) > 900:
+                # Find last sentence boundary before 900 chars
+                truncated = clean_summary[:900]
+                last_period = max(truncated.rfind('.'), truncated.rfind('؟'), truncated.rfind('!'), truncated.rfind('.'))
+                if last_period > 400:
+                    clean_summary = truncated[:last_period + 1]
+                else:
+                    clean_summary = truncated + "..."
             lines.append(clean_summary)
-        
+            lines.append("")
         # Source and link
         source_name = article.source_name.replace("_", " ").title() if article.source_name else "AI News"
         lines.append("")

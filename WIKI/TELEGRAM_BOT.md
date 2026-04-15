@@ -19,7 +19,7 @@ Article summary text (max 500 chars)...
 🔗 <a href="https://example.com">لینک خبر</a>
 ```
 - Caption limited to 1024 characters (Telegram limit)
-- Summary truncated to 500 characters
+- **Summary Length**: 400-900 characters (truncated at sentence boundary)
 
 ### Text Message (no valid image)
 Same format but sent via `sendMessage` instead of `sendPhoto`

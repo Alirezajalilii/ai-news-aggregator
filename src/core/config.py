@@ -120,10 +120,8 @@ class TelegramBotCommand(BaseModel):
 
 
 class TelegramBotFilters(BaseModel):
-    min_title_length: int = 10
-    max_title_length: int = 200
-    min_summary_length: int = 50
-    max_summary_length: int = 500
+    min_summary_length: int = 400
+    max_summary_length: int = 900
 
 
 class TelegramBotFormatting(BaseModel):
