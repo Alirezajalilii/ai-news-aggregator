@@ -81,6 +81,9 @@ class ScraperWorker:
                 results = await self._scrape_batch(batch, session)
                 all_results.extend(results)
                 
+                # Commit after each batch to avoid transaction issues
+                await session.commit()
+                
                 # Small delay between batches
                 await asyncio.sleep(1)
             
@@ -126,7 +129,7 @@ class ScraperWorker:
         
         for source_config in source_configs:
             # Get or create source in database
-            source = await self._get_or_create_source(source_config, session)
+            source = await self._get_or_create_source(source_config, session, commit=False)
             
             # Create scraper
             scraper = ScraperRegistry.get_scraper(source_config.name)
@@ -148,7 +151,7 @@ class ScraperWorker:
         try:
             result = await scraper.scrape()
             
-            # Update source metadata
+            # Update source metadata (no commit here - batch will commit)
             source.last_fetched_at = datetime.utcnow()
             source.fetch_count += 1
             
@@ -158,18 +161,15 @@ class ScraperWorker:
                 source.error_count += 1
                 source.last_error = result.error
             
-            await session.commit()
-            
             return result
             
         except Exception as e:
             logger.error(f"Error scraping source {source.name}: {e}")
             source.error_count += 1
             source.last_error = str(e)
-            await session.commit()
             raise
     
-    async def _get_or_create_source(self, source_config, session: AsyncSession) -> Source:
+    async def _get_or_create_source(self, source_config, session: AsyncSession, commit: bool = True) -> Source:
         """Get or create source in database"""
         query = select(Source).where(Source.name == source_config.name)
         result = await session.execute(query)
@@ -184,8 +184,9 @@ class ScraperWorker:
                 enabled=source_config.enabled,
             )
             session.add(source)
-            await session.commit()
-            await session.refresh(source)
+            if commit:
+                await session.commit()
+                await session.refresh(source)
         
         return source
     
