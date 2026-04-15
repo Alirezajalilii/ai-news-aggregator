@@ -109,10 +109,31 @@ class BaseScraper(ABC):
         """Fetch full article text from URL"""
 ```
 
+## Fetch Strategies
+
+Each scraper can use a different fetch strategy based on the source requirements:
+
+| Strategy | Use Case | Example Sources |
+|----------|----------|----------------|
+| `httpx` | Default - simple HTTP | Most sources |
+| `curl` | Sites blocking httpx | venturebeat |
+| `ollama` | Cloudflare/protected pages | openai |
+| `playwright` | JavaScript challenges | Sites with JS verification |
+| `brave` | Brave Search API | Alternative news search |
+
+**Configuring in config.yaml:**
+```yaml
+sources:
+  - name: "openai"
+    fetch_strategy: "ollama"  # Use LLM for Cloudflare-protected sites
+  - name: "venturebeat_ai"
+    fetch_strategy: "playwright"  # Use browser for JS challenges
+```
+
 ## Article Extraction Flow
 
 ```
-1. fetch_page() → BeautifulSoup HTML
+1. scraper.scrape() → _fetch() using configured strategy
 2. parse_articles() → Extract ArticleData list
 3. For each article:
    a. title: From h1/h2/h3 or link text
@@ -120,6 +141,10 @@ class BaseScraper(ABC):
    c. summary: From paragraph or card text
    d. image_url: From img src
    e. published_at: From time tag or date pattern
+4. ArticleData.generate_hash() → Unique ID for deduplication
+5. DeduplicationService.is_duplicate() → Check against DB
+6. If not duplicate → Save to DB
+7. If duplicate → Mark as duplicate (is_duplicate=True)
 ```
 
 ## Content Fetching
@@ -127,6 +152,13 @@ class BaseScraper(ABC):
 - Each scraper calls `fetch_article_content(url)` to get full article text
 - Full content is passed to **SummarizationService** for AI-generated summaries
 - Average content length: 2000-8000 characters
+
+## Deduplication
+
+Articles are deduplicated using content hash:
+- Hash = SHA256(title | url | summary)
+- Duplicate articles are marked with `is_duplicate=True`
+- Only `is_sent=False AND is_duplicate=False` articles are published
 
 ## Error Handling
 
