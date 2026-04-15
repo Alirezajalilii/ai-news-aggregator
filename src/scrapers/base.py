@@ -24,6 +24,17 @@ class ArticleData:
     published_at: datetime = field(default_factory=datetime.utcnow)
     tags: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    def generate_hash(self) -> str:
+        """Generate content hash for deduplication"""
+        import hashlib
+        text = f"{self.title}|{self.url}|{self.summary or ''}"
+        return hashlib.sha256(text.encode()).hexdigest()
+    
+    def generate_title_hash(self) -> str:
+        """Generate title-only hash"""
+        import hashlib
+        return hashlib.sha256(self.title.encode()).hexdigest()
 
 
 @dataclass
