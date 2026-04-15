@@ -46,7 +46,7 @@ class TelegramFormatter:
         lines.append(f"📌 منبع: {source_name}")
         
         if config.get("include_timestamp", True) and article.published_at:
-            time_str = article.published_at.strftime("%Y-%m-%d")
+            time_str = article.published_at.strftime("%Y-%m-%d %H:%M")
             lines.append(f"⏰ {time_str}")
         
         lines.append(f"🔗 <a href=\"{article.url}\">لینک خبر</a>")
@@ -80,7 +80,7 @@ class TelegramFormatter:
         lines.append(f"📌 منبع: {source_name}")
         
         if config.get("include_timestamp", True) and article.published_at:
-            time_str = article.published_at.strftime("%Y-%m-%d")
+            time_str = article.published_at.strftime("%Y-%m-%d %H:%M")
             lines.append(f"⏰ {time_str}")
         
         lines.append(f"🔗 <a href=\"{article.url}\">لینک خبر</a>")

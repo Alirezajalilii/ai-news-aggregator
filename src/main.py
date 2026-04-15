@@ -161,15 +161,29 @@ def scheduler(ctx):
     console.print("[cyan]Starting scheduler...[/cyan]")
     console.print("[yellow]Press Ctrl+C to stop[/yellow]")
     
-    scheduler = get_scheduler()
-    scheduler.start()
+    import threading
+    import time
+    
+    def run_scheduler():
+        asyncio.run(_run_scheduler())
+    
+    async def _run_scheduler():
+        scheduler = get_scheduler()
+        scheduler.start()
+        
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            scheduler.stop()
+    
+    thread = threading.Thread(target=run_scheduler, daemon=True)
+    thread.start()
     
     try:
-        # Keep running
-        asyncio.run(asyncio.Event().wait())
+        thread.join()
     except KeyboardInterrupt:
         console.print("\n[yellow]Stopping scheduler...[/yellow]")
-        scheduler.stop()
 
 
 @cli.command()
