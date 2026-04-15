@@ -17,6 +17,7 @@ from src.database.models import Article, Source, init_db, get_async_session
 from src.scrapers import ScraperRegistry
 from src.services.entity_extractor import EntityExtractor
 from src.services.deduplication import DeduplicationService
+from src.services.summarizer import get_summarization_service
 
 logger = logging.getLogger(__name__)
 
@@ -228,17 +229,17 @@ class ScraperWorker:
                 if not source:
                     continue
                 
-                # Fetch full article content if scraper supports it
+                # Fetch full article content
                 full_content = article_data.content
                 if scraper and not full_content:
                     try:
                         full_content = await scraper.fetch_article_content(article_data.url)
                     except Exception as e:
-                        self.logger.debug(f"Could not fetch full content for {article_data.url}: {e}")
+                        logger.debug(f"Could not fetch full content for {article_data.url}: {e}")
                 
-                # Use full content as summary if no summary
-                display_summary = article_data.summary or full_content
-                # No limit here - let summarization happen naturally at formatting stage
+                # Generate AI summary from full content
+                summarizer = get_summarization_service()
+                ai_summary = await summarizer.summarize(full_content or article_data.summary or "", article_data.url)
                 
                 # Create article
                 article = Article(
@@ -246,7 +247,7 @@ class ScraperWorker:
                     source_name=source.name,
                     category=source.category,
                     title=article_data.title,
-                    summary=display_summary,
+                    summary=ai_summary,
                     content=full_content,
                     url=article_data.url,
                     image_url=article_data.image_url,

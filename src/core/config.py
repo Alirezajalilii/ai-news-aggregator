@@ -96,7 +96,16 @@ class DeduplicationConfig(BaseModel):
     store_hash: bool = True
 
 
+class SummarizationConfig(BaseModel):
+    enabled: bool = True
+    model: str = "minimax-m2.7:cloud"
+    max_summary_length: int = 900
+    min_summary_length: int = 400
+    prompt_template: str = "این خبر رو به صورت خلاصه و جذاب برای کانال تلگرام فارسی بنویس. طول خلاصه: بین {min_len} تا {max_len} کاراکتر. - خلاصه باید تمام اطلاعات مهم رو حفظ کنه - در انتها یک دعوت به اقدام بذار: \"🔗 ادامه خبر در لینک\" - بدون تیتر، فقط متن خلاصه. خبر: {content}"
+
+
 class NewsConfig(BaseModel):
+    summarization: SummarizationConfig = Field(default_factory=SummarizationConfig)
     deduplication: DeduplicationConfig = Field(default_factory=DeduplicationConfig)
     categories: List[CategoryConfig] = []
 

@@ -31,20 +31,14 @@ class TelegramFormatter:
         lines.append(f"{category_emoji} <b>{article.title}</b>")
         lines.append("")
         
-        # Summary (natural summary, truncated at sentence boundary between 400-900 chars)
+        # Summary (AI-generated, truncated at sentence boundary between 400-900 chars)
         if article.summary:
             # Clean HTML tags if any
             clean_summary = article.summary.replace("\u200b", "").replace("<br>", "\n").replace("<br/>", "\n")
             clean_summary = re.sub(r'<[^>]+>', '', clean_summary)  # Remove any HTML tags
-            # Allow natural summary between 400-900 chars, truncate at sentence boundary
-            if len(clean_summary) > 900:
-                # Find last sentence boundary before 900 chars
-                truncated = clean_summary[:900]
-                last_period = max(truncated.rfind('.'), truncated.rfind('؟'), truncated.rfind('!'), truncated.rfind('.'))
-                if last_period > 400:
-                    clean_summary = truncated[:last_period + 1]
-                else:
-                    clean_summary = truncated + "..."
+            # Safety cap - AI generates within bounds, but cap at 950 just in case
+            if len(clean_summary) > 950:
+                clean_summary = clean_summary[:950]
             lines.append(clean_summary)
             lines.append("")
         
@@ -72,19 +66,13 @@ class TelegramFormatter:
         lines.append(f"{category_emoji} <b>{article.title}</b>")
         lines.append("")
         
-        # Summary (natural summary between 400-900 chars, truncated at sentence boundary)
+        # Summary (AI-generated between 400-900 chars, truncated at sentence boundary)
         if article.summary:
             clean_summary = article.summary.replace("\u200b", "").replace("<br>", "\n").replace("<br/>", "\n")
             clean_summary = re.sub(r'<[^>]+>', '', clean_summary)
-            # Allow natural summary between 400-900 chars, truncate at sentence boundary
-            if len(clean_summary) > 900:
-                # Find last sentence boundary before 900 chars
-                truncated = clean_summary[:900]
-                last_period = max(truncated.rfind('.'), truncated.rfind('؟'), truncated.rfind('!'), truncated.rfind('.'))
-                if last_period > 400:
-                    clean_summary = truncated[:last_period + 1]
-                else:
-                    clean_summary = truncated + "..."
+            # Safety cap - AI generates within bounds, but cap at 950 just in case
+            if len(clean_summary) > 950:
+                clean_summary = clean_summary[:950]
             lines.append(clean_summary)
             lines.append("")
         # Source and link

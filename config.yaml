@@ -113,6 +113,20 @@ scraper:
       category: "news"
 
 news:
+  summarization:
+    enabled: true
+    model: "minimax-m2.7:cloud"
+    max_summary_length: 900
+    min_summary_length: 400
+    prompt_template: |
+      این خبر رو به صورت خلاصه و جذاب برای کانال تلگرام فارسی بنویس.
+      طول خلاصه: بین {min_len} تا {max_len} کاراکتر.
+      - خلاصه باید تمام اطلاعات مهم رو حفظ کنه
+      - در انتها یک دعوت به اقدام بذار: "🔗 ادامه خبر در لینک"
+      - بدون تیتر، فقط متن خلاصه
+      
+      خبر:
+      {content}
   deduplication:
     enabled: true
     similarity_threshold: 0.75
