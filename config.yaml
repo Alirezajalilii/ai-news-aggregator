@@ -163,7 +163,7 @@ scheduler:
       enabled: true
       
     - name: "send_digest"
-      schedule: "0 8,12,18,22 * * *"  # 8AM, 12PM, 6PM, 10PM
+      schedule: "0/15 * * * *"  # 8AM, 12PM, 6PM, 10PM
       description: "Send news digest to subscribed channels"
       enabled: true
 
