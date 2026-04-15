@@ -1,3 +1,14 @@
+---
+type: domain
+domain: telegram
+status: compiled
+updated: 2026-04-16
+tags: [telegram, bot, notification, channel]
+sources:
+  - config.yaml
+  - src/telegram/telegram_service.py
+---
+
 # Telegram Bot Configuration
 
 ## Bot Details

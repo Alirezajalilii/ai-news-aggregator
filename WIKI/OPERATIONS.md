@@ -1,3 +1,14 @@
+---
+type: domain
+domain: operations
+status: compiled
+updated: 2026-04-16
+tags: [operations, deployment, monitoring, docker, celery]
+sources:
+  - config.yaml
+  - src/main.py
+---
+
 # Operations Guide
 
 ## Starting the System

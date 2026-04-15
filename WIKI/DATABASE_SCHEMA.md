@@ -1,3 +1,13 @@
+---
+type: entity
+domain: database
+status: compiled
+updated: 2026-04-16
+tags: [postgresql, database, schema, article, source]
+sources:
+  - src/database/models.py
+---
+
 # Database Schema
 
 ## Database: `ai_news`

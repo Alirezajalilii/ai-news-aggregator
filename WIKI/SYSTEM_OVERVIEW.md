@@ -1,3 +1,16 @@
+---
+type: system
+domain: ai-news-aggregator
+status: compiled
+updated: 2026-04-16
+tags: [system, architecture, scraper, telegram, summarization]
+sources:
+  - src/scrapers/base.py
+  - src/workers/scraper_worker.py
+  - src/services/summarizer.py
+  - src/telegram/telegram_service.py
+---
+
 # AI News Aggregator - System Overview
 
 ## Purpose

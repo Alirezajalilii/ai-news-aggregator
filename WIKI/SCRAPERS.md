@@ -14,39 +14,45 @@ python scripts/health_check.py --json  # JSON output
 
 ## Registered Sources (11)
 
-| Source | Display Name | Category | Status | Articles |
-|--------|--------------|----------|--------|----------|
-| openai | OpenAI | company | ❌ 403 Forbidden | - |
-| anthropic | Anthropic | company | ✅ OK | 14 |
-| google_ai | Google AI | company | ✅ OK | 9 |
-| huggingface | Hugging Face | research | ✅ OK | 20 |
-| marktechpost | MarkTechPost | news | ✅ OK | 14 |
-| techcrunch_ai | TechCrunch AI | news | ✅ OK | 7 |
-| venturebeat_ai | VentureBeat AI | news | ❌ 429 Rate Limited | - |
-| mit_news_ai | MIT News AI | research | ❌ 404 Not Found | - |
-| unite_ai | Unite.AI | news | ✅ OK | 7 |
-| ai_news | AI News | news | ✅ OK | 2 |
-| the_verge_ai | The Verge AI | news | ✅ OK | 1 |
+| Source | Display Name | Category | Status | Articles | Last Updated |
+|--------|--------------|----------|--------|----------|--------------|
+| openai | OpenAI | company | ✅ OK (RSS) | 15 | 2026-04-16 |
+| anthropic | Anthropic | company | ✅ OK | 14 | 2026-04-15 |
+| google_ai | Google AI | company | ✅ OK | 9 | 2026-04-15 |
+| huggingface | Hugging Face | research | ✅ OK | 20 | 2026-04-15 |
+| marktechpost | MarkTechPost | news | ✅ OK | 14 | 2026-04-15 |
+| techcrunch_ai | TechCrunch AI | news | ✅ OK | 7 | 2026-04-15 |
+| venturebeat_ai | VentureBeat AI | news | ✅ OK (RSS) | 7 | 2026-04-16 |
+| mit_news_ai | MIT News AI | research | ✅ OK | 15 | 2026-04-16 |
+| unite_ai | Unite.AI | news | ✅ OK | 7 | 2026-04-15 |
+| ai_news | AI News | news | ✅ OK | 2 | 2026-04-15 |
+| the_verge_ai | The Verge AI | news | ✅ OK | 1 | 2026-04-15 |
 
-**Summary: 8 OK, 3 FAILED out of 11 scrapers**
+**Summary: 11 OK, 0 FAILED out of 11 scrapers** ✅
 
-## Failed Scrapers
+## Fixed Scrapers (2026-04-16)
 
-### openai (403 Forbidden)
-- **Issue**: OpenAI's blog is protected by Cloudflare anti-bot protection
-- **Solution**: Would need to use official API or alternative approach
-- **Status**: Not fixable without significant changes
+### openai (Previously: 403 Forbidden)
+- **Issue**: Cloudflare anti-bot protection blocked direct access
+- **Fix**: Changed from `openai.com/blog` to RSS feed `openai.com/news/rss.xml`
+- **Scraper Update**: Rewrote scraper to parse RSS XML instead of HTML
+- **Status**: ✅ Working - 15 articles fetched
+- **Evidence**: `src/scrapers/openai_scraper.py` - OpenAIScraper class parses RSS items
 
-### venturebeat_ai (429 Rate Limited)
-- **Issue**: Rate limited by VentureBeat
-- **Solution**: Could reduce request frequency or use RSS
-- **Status**: Temporary - rate limit may clear
+### venturebeat_ai (Previously: 429 Rate Limited)
+- **Issue**: Vercel security checkpoint blocking access
+- **Fix**: Changed from `venturebeat.com/category/ai/` to RSS feed `venturebeat.com/feed/`
+- **Scraper Update**: Rewrote scraper to parse RSS XML instead of HTML
+- **Status**: ✅ Working - 7 articles fetched
+- **Evidence**: `src/scrapers/venturebeat_scraper.py` - VentureBeatScraper class parses RSS items
 
-### mit_news_ai (404 Not Found)
+### mit_news_ai (Previously: 404 Not Found)
 - **Issue**: MIT News URL structure changed
-- **URL used**: `https://news.mit.edu/topic/artificial-intelligence`
-- **Solution**: Find new MIT AI news URL
-- **Status**: Needs URL update in config.yaml
+- **Old URL**: `https://news.mit.edu/topic/artificial-intelligence`
+- **New URL**: `https://news.mit.edu/topic/artificial-intelligence2` (note the "2")
+- **Fix**: Updated URL in config.yaml and scraper file
+- **Status**: ✅ Working - 15 articles fetched
+- **Evidence**: `config.yaml` source URL, `src/scrapers/mit_news_scraper.py` base_url
 
 ## Working Scrapers
 
