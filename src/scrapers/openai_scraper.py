@@ -1,9 +1,8 @@
 """
 AI News Aggregator - OpenAI Scraper
-Scraper for OpenAI Blog
+Scraper for OpenAI RSS Feed
 """
 
-import asyncio
 import logging
 from datetime import datetime
 from typing import List
@@ -15,68 +14,82 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIScraper(BaseScraper):
-    """Scraper for OpenAI Blog"""
+    """Scraper for OpenAI RSS Feed"""
     
     name = "openai"
-    base_url = "https://openai.com/blog"
+    base_url = "https://openai.com/news/rss.xml"
     
-    async def parse_articles(self, soup: BeautifulSoup, url: str) -> List[ArticleData]:
-        """Parse articles from OpenAI blog page"""
+    async def parse_articles(self, content: str | BeautifulSoup, url: str) -> List[ArticleData]:
+        """Parse articles from OpenAI RSS feed"""
+        soup = self._html_to_soup(content)
         articles = []
         
-        # Find article cards
-        article_cards = soup.find_all("article") or soup.find_all("div", class_=lambda x: x and "card" in x.lower())
+        # Find all item elements in RSS
+        items = soup.find_all("item")
         
-        for card in article_cards[:15]:  # Limit to 15 most recent
+        for item in items[:15]:  # Limit to 15 most recent
             try:
-                article = self._extract_article(card, url)
+                article = self._extract_article(item)
                 if article and len(article.title) > 10:
                     articles.append(article)
             except Exception as e:
-                logger.debug(f"Error parsing OpenAI article card: {e}")
+                logger.debug(f"Error parsing OpenAI RSS item: {e}")
                 continue
         
         return articles
     
-    def _extract_article(self, card, base_url: str) -> ArticleData:
-        """Extract article data from card element"""
+    def _extract_article(self, item) -> ArticleData:
+        """Extract article data from RSS item element"""
         
-        # Try different selectors for title
-        title_elem = (
-            card.find("h1") or 
-            card.find("h2") or 
-            card.find("h3") or
-            card.find("a", class_=lambda x: x and "title" in x.lower())
-        )
+        # Title
+        title_elem = item.find("title")
+        title = self.clean_text(title_elem.get_text()) if title_elem else "No title"
         
-        title = self.clean_text(title_elem.get_text()) if title_elem else None
+        # Link
+        link_elem = item.find("link")
+        article_url = link_elem.get_text() if link_elem else ""
         
-        # Extract URL
-        link = card.find("a", href=True)
-        article_url = link["href"] if link else None
+        # Remove CDATA wrapper if present
+        if article_url.startswith("<![CDATA[") and article_url.endswith("]]>"):
+            article_url = article_url[9:-3]
         
-        if article_url and not article_url.startswith("http"):
-            article_url = f"https://openai.com{article_url}"
+        article_url = article_url.strip()
         
-        # Extract summary/description
-        summary_elem = card.find("p") or card.find("div", class_=lambda x: x and "desc" in x.lower())
-        summary = self.clean_text(summary_elem.get_text()) if summary_elem else None
+        # Description/Summary
+        desc_elem = item.find("description")
+        summary = ""
+        if desc_elem:
+            desc_text = desc_elem.get_text()
+            # Remove CDATA if present
+            if desc_text.startswith("<![CDATA[") and desc_text.endswith("]]>"):
+                desc_text = desc_text[9:-3]
+            summary = self.clean_text(desc_text)
         
-        # Extract date
-        date_elem = card.find(["time", "span", "div"], class_=lambda x: x and "date" in x.lower())
-        published_at = self.extract_date(date_elem.get("datetime") if date_elem and date_elem.name == "time" else date_elem.get_text() if date_elem else None)
+        # Published date
+        pubdate_elem = item.find("pubdate")
+        published_at = datetime.utcnow()
+        if pubdate_elem:
+            published_at = self.extract_date(pubdate_elem.get_text()) or datetime.utcnow()
         
-        # Extract image
-        img_elem = card.find("img")
-        image_url = img_elem["src"] if img_elem and img_elem.get("src") else None
+        # Category
+        cat_elem = item.find("category")
+        tags = ["AI", "OpenAI"]
+        if cat_elem:
+            tags.append(self.clean_text(cat_elem.get_text()))
+        
+        # Image - try enclosure or media:content
+        image_url = None
+        enclosure = item.find("enclosure")
+        if enclosure and enclosure.get("url"):
+            image_url = enclosure["url"]
         
         return ArticleData(
-            title=title or "No title",
-            url=article_url or "",
+            title=title,
+            url=article_url,
             summary=summary,
             image_url=image_url,
-            published_at=published_at or datetime.utcnow(),
-            tags=["AI", "OpenAI", "GPT"]
+            published_at=published_at,
+            tags=tags
         )
 
 

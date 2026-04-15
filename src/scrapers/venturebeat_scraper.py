@@ -1,6 +1,6 @@
 """
 AI News Aggregator - VentureBeat Scraper
-Scraper for VentureBeat AI section
+Scraper for VentureBeat RSS Feed
 """
 
 import logging
@@ -14,61 +14,95 @@ logger = logging.getLogger(__name__)
 
 
 class VentureBeatScraper(BaseScraper):
-    """Scraper for VentureBeat AI section"""
+    """Scraper for VentureBeat RSS Feed"""
     
     name = "venturebeat_ai"
-    base_url = "https://venturebeat.com/category/ai/"
+    base_url = "https://venturebeat.com/feed/"
     
-    async def parse_articles(self, soup: BeautifulSoup, url: str) -> List[ArticleData]:
-        """Parse articles from VentureBeat"""
+    async def parse_articles(self, content: str | BeautifulSoup, url: str) -> List[ArticleData]:
+        """Parse articles from VentureBeat RSS feed"""
+        soup = self._html_to_soup(content)
         articles = []
         
-        article_cards = soup.find_all("article") or soup.find_all("div", class_=lambda x: x and "post" in str(x).lower())
+        # Find all item elements in RSS
+        items = soup.find_all("item")
         
-        for card in article_cards[:20]:
+        for item in items[:20]:  # Limit to 20 most recent
             try:
-                article = self._extract_article(card, url)
+                article = self._extract_article(item)
                 if article and len(article.title) > 10:
                     articles.append(article)
             except Exception as e:
-                logger.debug(f"Error parsing VentureBeat article: {e}")
+                logger.debug(f"Error parsing VentureBeat RSS item: {e}")
                 continue
         
         return articles
     
-    def _extract_article(self, card, base_url: str) -> ArticleData:
-        """Extract article data from card element"""
+    def _extract_article(self, item) -> ArticleData:
+        """Extract article data from RSS item element"""
         
-        title_elem = card.find(["h2", "h3"]) or card.find("a")
-        title = self.clean_text(title_elem.get_text()) if title_elem else None
+        # Title
+        title_elem = item.find("title")
+        title = self.clean_text(title_elem.get_text()) if title_elem else "No title"
         
-        link = card.find("a", href=True)
-        article_url = link["href"] if link else None
+        # Remove CDATA wrapper if present
+        title_text = title
+        if title_text.startswith("<![CDATA[") and title_text.endswith("]]>"):
+            title_text = title_text[9:-3]
         
-        if article_url and not article_url.startswith("http"):
-            article_url = f"https://venturebeat.com{article_url}"
+        # Link
+        link_elem = item.find("link")
+        article_url = ""
+        if link_elem:
+            article_url = link_elem.get_text()
+            if article_url.startswith("<![CDATA[") and article_url.endswith("]]>"):
+                article_url = article_url[9:-3]
+            article_url = article_url.strip()
         
-        summary_elem = card.find("p")
-        summary = self.clean_text(summary_elem.get_text()) if summary_elem else None
+        # Description/Summary - extract from HTML content
+        desc_elem = item.find("description")
+        summary = ""
+        if desc_elem:
+            desc_text = desc_elem.get_text()
+            if desc_text.startswith("<![CDATA[") and desc_text.endswith("]]>"):
+                desc_text = desc_text[9:-3]
+            # Clean HTML tags from description
+            desc_soup = BeautifulSoup(desc_text, "html.parser")
+            summary = self.clean_text(desc_soup.get_text())
+            # Truncate if too long
+            if len(summary) > 500:
+                summary = summary[:500] + "..."
         
-        date_elem = card.find(["time", "span"])
-        published_at = None
-        if date_elem:
-            if date_elem.name == "time":
-                published_at = self.extract_date(date_elem.get("datetime"))
-            else:
-                published_at = self.extract_date(date_elem.get_text())
+        # Published date
+        pubdate_elem = item.find("pubdate")
+        published_at = datetime.utcnow()
+        if pubdate_elem:
+            published_at = self.extract_date(pubdate_elem.get_text()) or datetime.utcnow()
         
-        img_elem = card.find("img")
-        image_url = img_elem.get("src") if img_elem else None
+        # Category
+        cat_elem = item.find("category")
+        tags = ["AI", "VentureBeat", "Business"]
+        if cat_elem:
+            tags.append(self.clean_text(cat_elem.get_text()))
+        
+        # Author
+        author_elem = item.find("author")
+        if author_elem:
+            tags.append(self.clean_text(author_elem.get_text()))
+        
+        # Image - try enclosure
+        image_url = None
+        enclosure = item.find("enclosure")
+        if enclosure and enclosure.get("url"):
+            image_url = enclosure["url"]
         
         return ArticleData(
-            title=title or "No title",
-            url=article_url or "",
+            title=title_text,
+            url=article_url,
             summary=summary,
             image_url=image_url,
-            published_at=published_at or datetime.utcnow(),
-            tags=["AI", "VentureBeat", "Business"]
+            published_at=published_at,
+            tags=tags
         )
 
 

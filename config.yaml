@@ -48,11 +48,11 @@ scraper:
   default_fetch_strategy: "httpx"  # httpx, curl, ollama, brave
   sources:
     - name: "openai"
-      url: "https://openai.com/blog"
+      url: "https://openai.com/news/rss.xml"
       enabled: true
       priority: 1
       category: "company"
-      fetch_strategy: "ollama"  # Try LLM extraction for Cloudflare-protected sites
+      fetch_strategy: "httpx"
       
     - name: "anthropic"
       url: "https://www.anthropic.com/news"
@@ -90,14 +90,14 @@ scraper:
       fetch_strategy: "httpx"
       
     - name: "venturebeat_ai"
-      url: "https://venturebeat.com/category/ai/"
+      url: "https://venturebeat.com/feed/"
       enabled: true
       priority: 2
       category: "business"
-      fetch_strategy: "curl"  # curl may bypass rate limiting
+      fetch_strategy: "httpx"
       
     - name: "mit_news_ai"
-      url: "https://news.mit.edu/topic/artificial-intelligence"
+      url: "https://news.mit.edu/topic/artificial-intelligence2"
       enabled: true
       priority: 3
       category: "research"

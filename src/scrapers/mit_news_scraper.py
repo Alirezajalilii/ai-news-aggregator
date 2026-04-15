@@ -17,7 +17,7 @@ class MITNewsScraper(BaseScraper):
     """Scraper for MIT News AI section"""
     
     name = "mit_news_ai"
-    base_url = "https://news.mit.edu/topic/artificial-intelligence"
+    base_url = "https://news.mit.edu/topic/artificial-intelligence2"
     
     async def parse_articles(self, soup: BeautifulSoup, url: str) -> List[ArticleData]:
         """Parse articles from MIT News AI"""
