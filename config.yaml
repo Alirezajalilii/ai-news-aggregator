@@ -153,7 +153,7 @@ scheduler:
   
   jobs:
     - name: "fetch_all_sources"
-      schedule: "0 */4 * * *"  # Every 4 hours
+      schedule: "0/15 * * * *"  # Every 4 hours
       description: "Fetch news from all sources"
       enabled: true
       
