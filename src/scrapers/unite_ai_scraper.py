@@ -65,11 +65,19 @@ class UniteAIScraper(BaseScraper):
         # Clean title - remove date and author prefixes like "ReportsApril 15, 2026By Alex"
         title = link_text
         
+        # Remove common garbage patterns from Unite.AI:
+        # ", CEO & Founder of Unite.AI" prefix garbage
+        title = re.sub(r'^[,\s]*', '', title)  # Leading commas/spaces
+        title = re.sub(r',\s*(?:CEO|CTO|CFO|COO|Founder|Co-Founder|President|VP|Chief)\s+.*$', '', title)
+        
         # Remove date patterns: "April 15, 2026" or "Apr 15, 2026"
         title = re.sub(r'[A-Za-z]+\s+\d{1,2},\s*\d{4}', '', title)
         
         # Remove author patterns: "By Alex McFarland" or "By Alex"
         title = re.sub(r'By\s+[A-Za-z]+\s+[A-Za-z]+', '', title)
+        
+        # Remove trailing garbage like "Interview Series", "AR, VR & XR Conferences"
+        title = re.sub(r'\s*(?:Interview Series|AR, VR & XR Conferences)$', '', title)
         
         # Clean up extra whitespace
         title = ' '.join(title.split())

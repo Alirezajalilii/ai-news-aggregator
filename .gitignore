@@ -8,7 +8,6 @@ __pycache__/
 .Python
 venv/
 env/
-.env
 .venv/
 
 # IDE
@@ -29,6 +28,7 @@ logs/
 # Config (local only)
 config.local.yaml
 secrets.yaml
+.env
 
 # OS
 .DS_Store

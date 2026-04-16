@@ -17,19 +17,21 @@ tags: [ai-news, aggregator, telegram, python, scraper]
 | [[wiki:TELEGRAM_BOT]] | domain | 2026-04-15 | compiled |
 | [[wiki:DATABASE_SCHEMA]] | entity | 2026-04-15 | compiled |
 | [[wiki:OPERATIONS]] | domain | 2026-04-15 | compiled |
+| [[wiki:DOCKER_DEPLOYMENT]] | domain | 2026-04-16 | compiled |
 
 ## Structure
 
 ```
 wiki/
-├── index.md          # This file - master catalog
-├── log.md            # Operation history (append-only)
-├── schema.md         # Page templates and conventions
-├── SYSTEM_OVERVIEW.md   # Full system architecture
-├── SCRAPERS.md       # All scrapers status and details
-├── TELEGRAM_BOT.md   # Telegram integration docs
-├── DATABASE_SCHEMA.md    # Database entities
-└── OPERATIONS.md     # Operations guide
+├── index.md              # This file - master catalog
+├── log.md                # Operation history (append-only)
+├── schema.md             # Page templates and conventions
+├── SYSTEM_OVERVIEW.md     # Full system architecture
+├── SCRAPERS.md           # All scrapers status and details
+├── TELEGRAM_BOT.md       # Telegram integration docs
+├── DATABASE_SCHEMA.md     # Database entities
+├── DOCKER_DEPLOYMENT.md   # Docker containerization and deployment
+└── OPERATIONS.md         # Operations guide
 ```
 
 ## Domains
@@ -42,6 +44,10 @@ wiki/
 - [[wiki:TELEGRAM_BOT]] - Telegram bot setup, commands, formatting
 - [[wiki:DATABASE_SCHEMA]] - PostgreSQL schema, Article/Source tables
 
+### Deployment Domain
+- [[wiki:DOCKER_DEPLOYMENT]] - Docker containerization, lifecycle, production deployment
+- Related: [[wiki:OPERATIONS]]
+
 ### Operations Domain
 - [[wiki:OPERATIONS]] - Deployment, monitoring, troubleshooting
 - Related: [[wiki:SYSTEM_OVERVIEW]]
@@ -50,6 +56,7 @@ wiki/
 
 | Date | Operation | Pages | Summary |
 |------|-----------|-------|---------|
+| 2026-04-16 | create | DOCKER_DEPLOYMENT | Full containerization with multi-stage Docker, compose, health checks |
 | 2026-04-16 | fix | SCRAPERS | Fixed 3 broken scrapers (OpenAI, VentureBeat, MIT) using RSS feeds |
 | 2026-04-16 | fix | SCRAPERS | Added frontmatter, updated status table |
 | 2026-04-16 | create | index, log | Created wiki index and log per Karpathy protocol |
@@ -59,6 +66,7 @@ wiki/
 - [ ] Gap: No health_check script documentation in OPERATIONS.md
 - [ ] Gap: No backup/restore procedure documented
 - [ ] Gap: No error monitoring/alerting documented
+- [x] Gap: No Docker deployment documentation → Created DOCKER_DEPLOYMENT.md
 
 ## Stale Pages
 

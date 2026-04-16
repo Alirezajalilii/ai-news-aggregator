@@ -28,13 +28,22 @@ class ArticleData:
     def generate_hash(self) -> str:
         """Generate content hash for deduplication"""
         import hashlib
-        text = f"{self.title}|{self.url}|{self.summary or ''}"
+        # Normalize title to strip metadata like "2 days ago • 8"
+        import re
+        normalized_title = re.sub(r'\s*(?:about\s+)?\d+\s+(?:second|minute|hour|day|week|month|year)s?\s+ago\s*•\s*\d+\s*$', '', self.title)
+        normalized_title = re.sub(r'\s*•\s*\d+\s*$', '', normalized_title).strip()
+        text = f"{normalized_title}|{self.url}|{self.summary or ''}"
         return hashlib.sha256(text.encode()).hexdigest()
     
     def generate_title_hash(self) -> str:
-        """Generate title-only hash"""
+        """Generate normalized title-only hash"""
         import hashlib
-        return hashlib.sha256(self.title.encode()).hexdigest()
+        import re
+        # Strip metadata from title before hashing
+        normalized_title = re.sub(r'\s*(?:about\s+)?\d+\s+(?:second|minute|hour|day|week|month|year)s?\s+ago\s*•\s*\d+\s*$', '', self.title)
+        normalized_title = re.sub(r'\s*•\s*\d+\s*$', '', normalized_title).strip()
+        normalized_title = normalized_title.lower().strip()
+        return hashlib.sha256(normalized_title.encode()).hexdigest()
 
 
 @dataclass
@@ -133,9 +142,13 @@ class BaseScraper(ABC):
         """
         from src.scrapers.fetch_strategies import get_fetch_strategy
         
+        kwargs = {"timeout": self.scraper_config.request_timeout}
+        if self.fetch_strategy == "ollama":
+            kwargs["ollama_base_url"] = self.config.news.summarization.ollama_base_url
+        
         strategy = get_fetch_strategy(
             self.fetch_strategy,
-            timeout=self.scraper_config.request_timeout
+            **kwargs
         )
         
         return await strategy.fetch(self.base_url)

@@ -127,7 +127,8 @@ scraper:
 news:
   summarization:
     enabled: true
-    model: "minimax-m2.7:cloud"
+    model: "glm-pro:latest"
+    ollama_base_url: "http://localhost:11434"  # Override via OLLAMA_BASE_URL env var for Docker
     max_summary_length: 900
     min_summary_length: 400
     prompt_template: |

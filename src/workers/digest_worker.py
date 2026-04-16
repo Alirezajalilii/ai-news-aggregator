@@ -124,7 +124,7 @@ class DigestWorker:
         session: AsyncSession,
         category_filter: Optional[List[str]] = None
     ) -> List[Article]:
-        """Get articles that haven't been sent yet"""
+        """Get articles that haven't been sent yet, with valid Persian summaries"""
         # Get articles from last 24 hours
         cutoff = datetime.utcnow() - timedelta(hours=24)
         
@@ -134,7 +134,13 @@ class DigestWorker:
                 and_(
                     Article.is_sent == False,
                     Article.is_duplicate == False,
-                    Article.scraped_at >= cutoff
+                    Article.scraped_at >= cutoff,
+                    # Only send articles that have a summary
+                    Article.summary != None,
+                    Article.summary != '',
+                    # Must have a valid URL
+                    Article.url != None,
+                    Article.url != ''
                 )
             )
             .order_by(Article.published_at.desc())
@@ -144,11 +150,24 @@ class DigestWorker:
         result = await session.execute(query)
         articles = result.scalars().all()
         
+        # Filter: only articles with Persian content in summary
+        articles = [a for a in articles if self._has_persian(a.summary)]
+        
         # Filter by category if specified
         if category_filter:
             articles = [a for a in articles if a.category in category_filter]
         
         return articles
+    
+    @staticmethod
+    def _has_persian(text: str) -> bool:
+        """Check if text contains Persian characters"""
+        if not text:
+            return False
+        for char in text:
+            if '\u0600' <= char <= '\u06FF' or '\uFB50' <= char <= '\uFDFF' or '\uFE70' <= char <= '\uFEFF':
+                return True
+        return False
     
     async def _get_active_subscriptions(self, session: AsyncSession) -> List[Subscription]:
         """Get all active subscriptions"""

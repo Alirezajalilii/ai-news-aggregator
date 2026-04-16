@@ -12,6 +12,26 @@ Append-only operation history. Format: `## [YYYY-MM-DD] {operation} | {summary}`
 
 ---
 
+## [2026-04-16] create | Full Docker containerization with production-grade patterns
+
+**Pages Changed:** DOCKER_DEPLOYMENT.md (new), index.md, log.md
+**Source:** Dockerfile, docker-compose.yml, docker-compose.prod.yml, docker/entrypoint.sh, docker/healthcheck.py, .env.example, src/core/config.py, src/services/summarizer.py, src/scrapers/fetch_strategies.py, src/scrapers/base.py
+**Summary:**
+- Multi-stage Dockerfile (builder + runtime, non-root user, health checks)
+- docker-compose.yml with PostgreSQL 16, Redis 7, and app services
+- docker-compose.prod.yml with production overrides (restart always, resource limits, no external DB/Redis ports)
+- Entrypoint script with graceful shutdown (SIGTERM handler, 30s drain)
+- Healthcheck server with /health (liveness) and /ready (readiness) endpoints
+- Environment variable overrides for all config (DatabaseConfig, RedisConfig, TelegramConfig, SummarizationConfig, LoggingConfig.from_env())
+- Fixed hardcoded localhost:11434 in summarizer.py and fetch_strategies.py to use configurable ollama_base_url
+- Configured Ollama to listen on 0.0.0.0 (systemd override) for Docker container access
+- Added iptables/ufw rules for Docker bridge → host connectivity
+- Verified full lifecycle: docker compose up → all healthy → docker compose down → up again
+
+**Evidence:** Docker containers running healthy, healthcheck endpoints responding
+
+---
+
 ## [2026-04-16] fix | Added frontmatter to all wiki pages
 
 **Pages Changed:** SCRAPERS.md, SYSTEM_OVERVIEW.md, TELEGRAM_BOT.md, DATABASE_SCHEMA.md, OPERATIONS.md, index.md, log.md

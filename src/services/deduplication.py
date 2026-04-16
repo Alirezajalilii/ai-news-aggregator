@@ -5,9 +5,9 @@ Handles article deduplication using multiple similarity strategies
 
 import hashlib
 import logging
+import re
 from typing import List, Tuple, Optional, Set
 from datetime import datetime, timedelta
-import re
 
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,9 +38,9 @@ class SimilarityCalculator:
         if not title1 or not title2:
             return 0.0
         
-        # Normalize titles
-        title1 = self._normalize_text(title1)
-        title2 = self._normalize_text(title2)
+        # Normalize titles - strip metadata like "2 days ago • 8"
+        title1 = self._normalize_title(title1)
+        title2 = self._normalize_title(title2)
         
         # Tokenize
         words1 = set(title1.split())
@@ -149,6 +149,15 @@ class SimilarityCalculator:
         # Normalize whitespace
         text = ' '.join(text.split())
         return text
+    
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        """Normalize title by stripping metadata like '2 days ago • 8'"""
+        # Remove HuggingFace-style metadata: "2 days ago • 8" or "about 23 hours ago • 6"
+        title = re.sub(r'\s*(?:about\s+)?\d+\s+(?:second|minute|hour|day|week|month|year)s?\s+ago\s*•\s*\d+\s*$', '', title)
+        # Remove comment counts: "• 8" at end
+        title = re.sub(r'\s*•\s*\d+\s*$', '', title)
+        return title.strip().lower()
 
 
 class DeduplicationService:
@@ -172,22 +181,38 @@ class DeduplicationService:
         """
         Check if an article is a duplicate of an existing one
         
+        Checks in order:
+        1. Exact URL match (most reliable)
+        2. Content hash match
+        3. Title similarity match
+        
         Returns:
             Tuple of (is_duplicate, original_article, similarity_breakdown)
         """
         if not self.dedup_config.enabled:
             return False, None, {}
         
-        # First, check by exact hash
-        content_hash = self._generate_hash(title, url, content)
-        existing = await self._find_by_hash(content_hash)
-        if existing:
-            return True, existing, {"method": "exact_hash"}
+        # STEP 1: Check by exact URL match (most reliable dedup method)
+        if url and url.strip():
+            url_match = await self._find_by_url(url.strip())
+            if url_match:
+                return True, url_match, {"method": "exact_url", "url": url}
         
-        # Get recent articles to compare (last 48 hours by default)
+        # STEP 2: Check by content hash
+        content_hash = self._generate_hash(title, url, content)
+        hash_match = await self._find_by_hash(content_hash)
+        if hash_match:
+            return True, hash_match, {"method": "exact_hash"}
+        
+        # STEP 3: Check by title hash (normalized)
+        title_hash = self._generate_title_hash(title)
+        title_hash_match = await self._find_by_title_hash(title_hash)
+        if title_hash_match:
+            return True, title_hash_match, {"method": "title_hash"}
+        
+        # STEP 4: Get recent articles to compare with similarity
         max_age = datetime.utcnow() - timedelta(hours=self.dedup_config.max_age_hours)
         
-        # Get articles from last N hours
         query = (
             select(Article)
             .where(
@@ -197,7 +222,7 @@ class DeduplicationService:
                 )
             )
             .order_by(Article.scraped_at.desc())
-            .limit(100)  # Limit for performance
+            .limit(100)
         )
         
         result = await self.session.execute(query)
@@ -211,12 +236,20 @@ class DeduplicationService:
         best_similarity = 0.0
         best_breakdown = {}
         
+        # Normalize title for comparison
+        normalized_title = SimilarityCalculator._normalize_title(title)
+        
         for article in recent_articles:
             article_entities = article.entities or []
+            article_entities_list = article_entities.get("entities", []) if isinstance(article_entities, dict) else article_entities
+            
+            # Also check URL match (in case the URL was slightly different but same article)
+            if url and article.url and url.strip() == article.url.strip():
+                return True, article, {"method": "url_match"}
             
             similarity, breakdown = self.calculator.calculate_overall_similarity(
                 title, article.title,
-                entities, article_entities,
+                entities, article_entities_list,
                 content, article.content
             )
             
@@ -244,8 +277,14 @@ class DeduplicationService:
         if original.similarity_hash:
             article.similarity_hash = original.similarity_hash
         
-        await self.session.commit()
+        await self.session.flush()  # Flush to DB, session will be committed by caller
         logger.info(f"Marked article '{article.title[:50]}...' as duplicate of '{original.title[:50]}...'")
+    
+    async def _find_by_url(self, url: str) -> Optional[Article]:
+        """Find article by exact URL match"""
+        query = select(Article).where(Article.url == url).limit(1)
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
     
     async def _find_by_hash(self, content_hash: str) -> Optional[Article]:
         """Find article by content hash"""
@@ -253,11 +292,25 @@ class DeduplicationService:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
     
+    async def _find_by_title_hash(self, title_hash: str) -> Optional[Article]:
+        """Find article by normalized title hash"""
+        query = select(Article).where(Article.title_hash == title_hash)
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+    
     @staticmethod
     def _generate_hash(title: str, url: str, content: Optional[str] = None) -> str:
         """Generate content hash for deduplication"""
-        text = f"{title}|{url}|{content or ''}"
+        # Normalize title before hashing to remove metadata
+        normalized_title = SimilarityCalculator._normalize_title(title)
+        text = f"{normalized_title}|{url}|{content or ''}"
         return hashlib.sha256(text.encode()).hexdigest()
+    
+    @staticmethod
+    def _generate_title_hash(title: str) -> str:
+        """Generate normalized title hash"""
+        normalized_title = SimilarityCalculator._normalize_title(title)
+        return hashlib.sha256(normalized_title.encode()).hexdigest()
 
 
 class EntityMatcher:

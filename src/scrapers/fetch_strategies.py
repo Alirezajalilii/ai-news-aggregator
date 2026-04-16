@@ -86,9 +86,10 @@ class OllamaStrategy(FetchStrategy):
     
     name = "ollama"
     
-    def __init__(self, timeout: int = 120, model: str = "minimax-m2.7:cloud"):
+    def __init__(self, timeout: int = 120, model: str = "minimax-m2.7:cloud", ollama_base_url: str = "http://localhost:11434"):
         self.timeout = timeout
         self.model = model
+        self.ollama_base_url = ollama_base_url.rstrip("/")
         self._client: Optional[httpx.AsyncClient] = None
     
     @property
@@ -132,7 +133,7 @@ CONTENT: ERROR"""
 
         try:
             response = await self.client.post(
-                "http://localhost:11434/api/generate",
+                f"{self.ollama_base_url}/api/generate",
                 json={
                     "model": self.model,
                     "prompt": prompt,

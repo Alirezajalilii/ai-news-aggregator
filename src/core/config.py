@@ -1,6 +1,9 @@
 """
 AI News Aggregator - Core Configuration Module
 Production-ready configuration management using YAML and Pydantic
+
+Supports environment variable overrides for Docker/12-factor deployments.
+Priority: Environment variables > config.yaml > defaults
 """
 
 import os
@@ -36,6 +39,20 @@ class DatabaseConfig(BaseModel):
     def url(self) -> str:
         return f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.name}"
 
+    @classmethod
+    def from_env(cls, base: "DatabaseConfig") -> "DatabaseConfig":
+        """Override fields from environment variables (DB_HOST, DB_PORT, etc.)"""
+        return cls(
+            host=os.getenv("DB_HOST", base.host),
+            port=int(os.getenv("DB_PORT", str(base.port))),
+            name=os.getenv("DB_NAME", base.name),
+            username=os.getenv("DB_USERNAME", base.username),
+            password=os.getenv("DB_PASSWORD", base.password),
+            pool_size=base.pool_size,
+            max_overflow=base.max_overflow,
+            echo=base.echo,
+        )
+
 
 class RedisConfig(BaseModel):
     host: str = "localhost"
@@ -51,6 +68,19 @@ class RedisConfig(BaseModel):
             return f"redis://:{self.password}@{self.host}:{self.port}/{self.db}"
         return f"redis://{self.host}:{self.port}/{self.db}"
 
+    @classmethod
+    def from_env(cls, base: "RedisConfig") -> "RedisConfig":
+        """Override fields from environment variables (REDIS_HOST, REDIS_PORT, etc.)"""
+        redis_password = os.getenv("REDIS_PASSWORD")
+        return cls(
+            host=os.getenv("REDIS_HOST", base.host),
+            port=int(os.getenv("REDIS_PORT", str(base.port))),
+            db=base.db,
+            password=redis_password if redis_password else base.password,
+            socket_timeout=base.socket_timeout,
+            max_connections=base.max_connections,
+        )
+
 
 class TelegramConfig(BaseModel):
     bot_token: str
@@ -59,6 +89,19 @@ class TelegramConfig(BaseModel):
     channels: List[str] = []
     parse_mode: str = "HTML"
     message_template: str = "html"
+
+    @classmethod
+    def from_env(cls, base: "TelegramConfig") -> "TelegramConfig":
+        """Override bot_token from TELEGRAM_BOT_TOKEN env var"""
+        env_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        return cls(
+            bot_token=env_token if env_token else base.bot_token,
+            allowed_users=base.allowed_users,
+            admin_users=base.admin_users,
+            channels=base.channels,
+            parse_mode=base.parse_mode,
+            message_template=base.message_template,
+        )
 
 
 class ScraperSource(BaseModel):
@@ -101,9 +144,22 @@ class DeduplicationConfig(BaseModel):
 class SummarizationConfig(BaseModel):
     enabled: bool = True
     model: str = "minimax-m2.7:cloud"
+    ollama_base_url: str = "http://localhost:11434"
     max_summary_length: int = 900
     min_summary_length: int = 400
     prompt_template: str = "این خبر رو به صورت خلاصه و جذاب برای کانال تلگرام فارسی بنویس. طول خلاصه: بین {min_len} تا {max_len} کاراکتر. - خلاصه باید تمام اطلاعات مهم رو حفظ کنه - در انتها یک دعوت به اقدام بذار: \"🔗 ادامه خبر در لینک\" - بدون تیتر، فقط متن خلاصه. خبر: {content}"
+
+    @classmethod
+    def from_env(cls, base: "SummarizationConfig") -> "SummarizationConfig":
+        """Override ollama_base_url from OLLAMA_BASE_URL env var"""
+        return cls(
+            enabled=base.enabled,
+            model=base.model,
+            ollama_base_url=os.getenv("OLLAMA_BASE_URL", base.ollama_base_url),
+            max_summary_length=base.max_summary_length,
+            min_summary_length=base.min_summary_length,
+            prompt_template=base.prompt_template,
+        )
 
 
 class NewsConfig(BaseModel):
@@ -157,6 +213,18 @@ class LoggingConfig(BaseModel):
     backup_count: int = 5
     sentry_dsn: Optional[str] = None
 
+    @classmethod
+    def from_env(cls, base: "LoggingConfig") -> "LoggingConfig":
+        """Override level from LOG_LEVEL env var"""
+        return cls(
+            level=os.getenv("LOG_LEVEL", base.level),
+            format=base.format,
+            file=base.file,
+            max_bytes=base.max_bytes,
+            backup_count=base.backup_count,
+            sentry_dsn=base.sentry_dsn,
+        )
+
 
 class MonitoringConfig(BaseModel):
     enabled: bool = True
@@ -184,10 +252,20 @@ class Settings(BaseModel):
 
 def load_config(config_path: Optional[str] = None) -> Settings:
     """
-    Load configuration from YAML file
+    Load configuration from YAML file with environment variable overrides.
+    
+    Priority: Environment variables > config.yaml > defaults
+    
+    Supported env vars:
+        DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD
+        REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+        TELEGRAM_BOT_TOKEN
+        OLLAMA_BASE_URL
+        LOG_LEVEL
+        APP_ENV
     
     Args:
-        config_path: Path to config file. Defaults to config.yaml in project root.
+        config_path: Path to config file. Defaults to CONFIG_PATH env var or config.yaml.
         
     Returns:
         Settings object with all configuration
@@ -203,7 +281,21 @@ def load_config(config_path: Optional[str] = None) -> Settings:
     with open(config_file, "r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
     
-    return Settings(**config_data)
+    settings = Settings(**config_data)
+    
+    # Apply environment variable overrides (for Docker / 12-factor)
+    settings.database = DatabaseConfig.from_env(settings.database)
+    settings.redis = RedisConfig.from_env(settings.redis)
+    settings.telegram = TelegramConfig.from_env(settings.telegram)
+    settings.news.summarization = SummarizationConfig.from_env(settings.news.summarization)
+    settings.logging = LoggingConfig.from_env(settings.logging)
+    
+    # Override app environment if set
+    app_env = os.getenv("APP_ENV")
+    if app_env:
+        settings.app.environment = app_env
+    
+    return settings
 
 
 def get_config() -> Settings:

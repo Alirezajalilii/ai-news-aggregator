@@ -22,6 +22,16 @@ from src.services.summarizer import get_summarization_service
 logger = logging.getLogger(__name__)
 
 
+def has_persian(text: str) -> bool:
+    """Check if text contains Persian characters"""
+    if not text:
+        return False
+    for char in text:
+        if '\u0600' <= char <= '\u06FF' or '\uFB50' <= char <= '\uFDFF' or '\uFE70' <= char <= '\uFEFF':
+            return True
+    return False
+
+
 class ScraperWorker:
     """
     Worker that scrapes all configured sources and saves articles to database
@@ -202,6 +212,17 @@ class ScraperWorker:
         
         for article_data in scraper_result.articles:
             try:
+                # Skip articles with empty or invalid URLs
+                if not article_data.url or not article_data.url.strip() or len(article_data.url.strip()) < 10:
+                    logger.warning(f"Skipping article with invalid URL: {article_data.title[:50]}")
+                    continue
+                
+                # Skip articles whose URL is a category/feed page
+                invalid_url_patterns = ['/category/', '/tag/', '/feed/', '/rss/', '/page/']
+                if any(p in article_data.url for p in invalid_url_patterns):
+                    logger.warning(f"Skipping article with category URL: {article_data.url}")
+                    continue
+                
                 # Extract entities
                 entities = self.entity_extractor.extract_to_list(
                     f"{article_data.title} {article_data.summary or ''}"
@@ -233,7 +254,7 @@ class ScraperWorker:
                     continue
                 
                 # Fetch full article content
-                full_content = article_data.content
+                full_content = getattr(article_data, "content", None)
                 if scraper and not full_content:
                     try:
                         full_content = await scraper.fetch_article_content(article_data.url)
@@ -242,7 +263,21 @@ class ScraperWorker:
                 
                 # Generate AI summary from full content
                 summarizer = get_summarization_service()
-                ai_summary = await summarizer.summarize(full_content or article_data.summary or "", article_data.url)
+                ai_summary = await summarizer.summarize(full_content or article_data.summary or article_data.title or "", article_data.url)
+                
+                # If summarization failed, use original summary or title
+                # But don't save articles without any summary at all
+                if not ai_summary:
+                    ai_summary = article_data.summary or article_data.title or ""
+                    
+                # Skip articles without Persian summary - they'll be picked up on next cycle
+                # after the summarizer generates a proper Persian summary
+                if ai_summary and not has_persian(ai_summary):
+                    logger.info(f"Skipping article without Persian summary: {article_data.title[:60]}...")
+                    continue
+                elif not ai_summary:
+                    logger.warning(f"Skipping article with no summary: {article_data.title[:60]}...")
+                    continue
                 
                 # Create article
                 article = Article(
@@ -252,7 +287,7 @@ class ScraperWorker:
                     title=article_data.title,
                     summary=ai_summary,
                     content=full_content,
-                    url=article_data.url,
+                    url=article_data.url.strip(),
                     image_url=article_data.image_url,
                     published_at=article_data.published_at,
                     entities={"entities": entities, "tags": article_data.tags},
@@ -265,7 +300,7 @@ class ScraperWorker:
                 saved += 1
                 
             except Exception as e:
-                logger.debug(f"Error saving article: {e}")
+                logger.warning(f"Error saving article '{article_data.title[:80]}': {e}")
                 continue
         
         await session.commit()

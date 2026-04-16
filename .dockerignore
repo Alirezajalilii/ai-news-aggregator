@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs (handled by volume mount)
+logs/
+
+# Documentation
+docs/
+*.md
+!README.md
+WIKI/
+.claude/
+
+# Local config (use .env instead)
+config.local.yaml
+secrets.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts (dev only)
+scripts/
+migrations/README.md

@@ -4,6 +4,7 @@ Scraper for Hugging Face Blog
 """
 
 import logging
+import re
 from datetime import datetime
 from typing import List
 from bs4 import BeautifulSoup
@@ -18,6 +19,9 @@ class HuggingFaceScraper(BaseScraper):
     
     name = "huggingface"
     base_url = "https://huggingface.co/blog"
+    
+    # Regex to strip metadata from titles like "2 days ago • 8" or "about 23 hours ago • 6"
+    _META_SUFFIX_RE = re.compile(r'\s*(?:about\s+)?\d+\s+(?:second|minute|hour|day|week|month|year)s?\s+ago\s*•\s*\d+\s*$')
     
     async def parse_articles(self, soup: BeautifulSoup, url: str) -> List[ArticleData]:
         """Parse articles from HuggingFace blog"""
@@ -41,6 +45,10 @@ class HuggingFaceScraper(BaseScraper):
         
         title_elem = card.find(["h1", "h2", "h3"]) or card.find("a")
         title = self.clean_text(title_elem.get_text()) if title_elem else None
+        
+        # Strip HuggingFace metadata suffix from titles (e.g. "2 days ago • 8")
+        if title:
+            title = self._META_SUFFIX_RE.sub('', title).strip()
         
         link = card.find("a", href=True)
         article_url = link["href"] if link else None
